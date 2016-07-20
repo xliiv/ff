@@ -1,8 +1,8 @@
 # Commands:
 
-- ff init <path-to-dir>
-- ff add <file-path> [<file-path>]
-- ff rm <file-path> [<file-path>]
+- ff init &lt;path-to-dir&gt;
+- ff add &lt;file-path&gt; [&lt;file-path&gt;]
+- ff rm &lt;file-path&gt; [&lt;file-path&gt;]
 - ff apply
 
 
