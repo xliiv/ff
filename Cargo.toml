@@ -1,0 +1,10 @@
+[package]
+name = "ff"
+version = "0.1.0"
+authors = ["xliiv <tymoteusz.jankowski@gmail.com>"]
+
+[dependencies]
+clap = "2"
+tempdir = "0.3.4"
+rust-ini = "*"
+walkdir = "0.1"
