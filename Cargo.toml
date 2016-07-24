@@ -6,5 +6,5 @@ authors = ["xliiv <tymoteusz.jankowski@gmail.com>"]
 [dependencies]
 clap = "2"
 tempdir = "0.3.4"
-rust-ini = "*"
+rust-ini = "0.9.*"
 walkdir = "0.1"
