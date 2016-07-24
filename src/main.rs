@@ -367,8 +367,7 @@ fn main() {
     let matches = App::new("ff")
         .version(crate_version!())
         .about("\n\
-            `ff` is files synchronization helper.\n\n\
-            It helps you to:\n\n\
+            `ff` helps you manage dot files by:\n\n\
             - linking files from your homedir to synchronized dir\n\
             - linking files from synchronized dir to homedir\n\
         ")
