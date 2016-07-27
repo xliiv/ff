@@ -37,7 +37,6 @@ mod tests {
             "tracking-dir={}\n", dir_to_init.path().to_str().unwrap()
         );
 
-        env::set_current_dir(homedir.path()).unwrap();
         init(
             dir_to_init.path().to_str().unwrap(),
             config_file.to_str().unwrap(),
@@ -59,15 +58,16 @@ mod tests {
         let tracked_file = tracking_dir.path().join(".vimrc");
 
         assert_eq!(tracked_file.exists(), false);
-        env::set_current_dir(homedir.path()).unwrap();
         add(
-            ".vimrc",
+            file_to_track.to_str().unwrap(),
             &homedir.path().to_str().unwrap(),
             &tracking_dir.path().to_str().unwrap(),
         );
         assert_eq!(tracked_file.exists(), true);
         assert_eq!(
-            fs::symlink_metadata(".vimrc").unwrap().file_type().is_symlink(),
+            fs::symlink_metadata(
+                file_to_track.to_str().unwrap()
+            ).unwrap().file_type().is_symlink(),
             true
         );
     }
@@ -89,7 +89,6 @@ mod tests {
         for file in &tracked_files {
             assert_eq!(file.exists(), false);
         }
-        env::set_current_dir(homedir.path()).unwrap();
         add_files(
             &files_to_track.iter().map(|f| f.to_str().unwrap()).collect::<Vec<_>>(),
             homedir.path().to_str().unwrap(),
@@ -120,7 +119,6 @@ mod tests {
             fs::symlink_metadata(&home_file).unwrap().file_type().is_symlink(),
             true
         );
-        env::set_current_dir(homedir.path()).unwrap();
         remove(
             &home_file.to_str().unwrap(),
             &homedir.path().to_str().unwrap(),
@@ -159,7 +157,6 @@ mod tests {
                 true
             );
         }
-        env::set_current_dir(homedir.path()).unwrap();
         remove_files(
             &files_to_restore.iter().map(|f| f.to_str().unwrap()).collect::<Vec<_>>(),
             homedir.path().to_str().unwrap(),
