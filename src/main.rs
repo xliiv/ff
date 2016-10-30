@@ -16,13 +16,11 @@ use walkdir::WalkDir;
 
 #[cfg(test)]
 mod tests {
-    use std::env;
     use std::fs::File;
     use std::fs;
     use std::io::prelude::*;
-    use std::io;
+    use std::path::Path;
     use std::os::unix::fs as unix_fs;
-    use std::path::PathBuf;
     use tempdir::TempDir;
 
     use super::*;
@@ -40,7 +38,6 @@ mod tests {
         init(
             dir_to_init.path().to_str().unwrap(),
             config_file.to_str().unwrap(),
-            homedir.path().to_str().unwrap(),
         );
 
         let mut f = File::open(config_file).unwrap();
@@ -119,14 +116,13 @@ mod tests {
             fs::symlink_metadata(&home_file).unwrap().file_type().is_symlink(),
             true
         );
-        remove(
-            &home_file.to_str().unwrap(),
-            &homedir.path().to_str().unwrap(),
-            &sync_dir.path().to_str().unwrap(),
-        );
+        remove(&home_file.to_str().unwrap());
         assert_eq!(
             fs::symlink_metadata(&home_file).unwrap().file_type().is_file(),
             true
+        );
+        assert_eq!(
+            Path::new(&sync_file).exists(), false
         );
     }
 
@@ -159,8 +155,6 @@ mod tests {
         }
         remove_files(
             &files_to_restore.iter().map(|f| f.to_str().unwrap()).collect::<Vec<_>>(),
-            homedir.path().to_str().unwrap(),
-            tracking_dir.path().to_str().unwrap(),
         );
         for file in files_to_restore {
             // checks that files are regular files
@@ -202,8 +196,6 @@ mod tests {
 // what about adding dir?
 // bash autocompletion: https://kbknapp.github.io/clap-rs/clap/struct.App.html#examples-35
 // errors handling!!
-// println should be in action_* instead of add(..) or remove(..)
-// add note that it works only in homedir
 
 
 pub fn swap_path_bases(file_path: &str, src_base: &str, dst_base: &str) -> String {
@@ -211,14 +203,14 @@ pub fn swap_path_bases(file_path: &str, src_base: &str, dst_base: &str) -> Strin
     return String::from(new);
 }
 
-pub fn init(dir_to_init: &str, config_path: &str, base_dir: &str) {
+pub fn init(dir_to_init: &str, config_path: &str) {
     let path = Path::new(config_path);
     if path.exists() == true {
         let old_path = get_tracking_dir_path();
         println!("Overwritting old path which was: {}", old_path);
     }
     if path.parent().unwrap().exists() == false {
-        std::fs::create_dir(path.parent().unwrap());
+        std::fs::create_dir(path.parent().unwrap()).unwrap();
     }
 
     let mut abs_dir = std::env::current_dir().unwrap();
@@ -245,9 +237,9 @@ pub fn add(file_path: &str, src_base: &str, dst_base: &str) {
 
     fs::create_dir_all(
         Path::new(&abs_dst).parent().unwrap().to_str().unwrap()
-    );
-    fs::copy(&file_path, &abs_dst);
-    std::fs::remove_file(&file_path);
+    ).unwrap();
+    fs::copy(&file_path, &abs_dst).unwrap();
+    std::fs::remove_file(&file_path).unwrap();
     unix_fs::symlink(&abs_dst, &file_path).unwrap();
     println!("added: {} (to: {})", file_path, abs_dst);
 }
@@ -258,22 +250,28 @@ pub fn add_files(file_paths: &Vec<&str>, base_dir: &str, tracking_dir: &str) {
     };
 }
 
-pub fn remove(to_remove: &str, src_base: &str, dst_base: &str) {
-    let mut abs_to_remove = std::env::current_dir().unwrap();
-    abs_to_remove.push(to_remove);
-    let sync_file = swap_path_bases(
-        &abs_to_remove.to_str().unwrap(), &src_base, &dst_base,
-    );
-    std::fs::remove_file(&to_remove);
-    match fs::copy(&sync_file, &to_remove) {
-        Ok(x) => println!("Unlinked file: {} (from: {})", to_remove, sync_file),
-        Err(x) => println!("ERROR unlinking file: {}", to_remove),
+pub fn remove(symlinked_file: &str) {
+    let linked_file;
+    match fs::read_link(symlinked_file) {
+        Ok(path) => linked_file = path,
+        Err(err) => {
+            println!("File '{}' NOT unlinked ({:?})", symlinked_file, err);
+            return
+        }
     }
+    std::fs::remove_file(&symlinked_file).unwrap();
+    match fs::copy(&linked_file, &symlinked_file) {
+        Ok(_x) => println!(
+            "Unlinked file: {} (from: {:?})", symlinked_file, linked_file
+        ),
+        Err(_x) => println!("ERROR unlinking file: {}", symlinked_file),
+    }
+    std::fs::remove_file(&linked_file).unwrap();
 }
 
-pub fn remove_files(file_paths: &Vec<&str>, base_dir: &str, tracking_dir: &str) {
+pub fn remove_files(file_paths: &Vec<&str>) {
     for file_path in file_paths {
-        remove(file_path, base_dir, tracking_dir);
+        remove(file_path);
     }
 }
 
@@ -290,8 +288,8 @@ pub fn apply(root_dir: &str, src_base: &str, dst_base: &str) {
 
             fs::create_dir_all(
                 Path::new(&user_file).parent().unwrap().to_str().unwrap()
-            );
-            std::fs::remove_file(&user_file);
+            ).unwrap();
+            std::fs::remove_file(&user_file).unwrap();
             unix_fs::symlink(&entry.path(), &user_file).unwrap();
             println!("symlinked: {} -> {}", user_file, entry.path().display());
         }
@@ -326,7 +324,6 @@ fn action_init(dir_path: &str) {
     init(
         dir_path,
         get_config_file_path().to_str().unwrap(),
-        std::env::home_dir().unwrap().to_str().unwrap(),
     );
 }
 
@@ -338,24 +335,19 @@ fn action_add(file_paths: &Vec<&str>, space: &str) {
     );
 }
 
-fn action_remove(file_paths: &Vec<&str>, space: &str) {
-    remove_files(
-        file_paths,
-        std::env::home_dir().unwrap().to_str().unwrap(),
-        get_space_dir_path(&space).to_str().unwrap(),
-    );
+fn action_remove(file_paths: &Vec<&str>) {
+    remove_files(file_paths);
 }
 
 fn action_apply(space_dir: &str) {
     let mut tracking_dir = PathBuf::from(get_tracking_dir_path());
     if space_dir != "" {
-        // TODO:: validate space_dir existance?
         tracking_dir = tracking_dir.join(space_dir);
     }
     apply(
         &get_space_dir_path(space_dir).to_str().unwrap(),
         &get_space_dir_path(space_dir).to_str().unwrap(),
-        std::env::home_dir().unwrap().to_str().unwrap(),
+        tracking_dir.to_str().unwrap(),
     );
 }
 
@@ -379,17 +371,21 @@ fn main() {
         .subcommand(
             SubCommand::with_name("add")
                 .about("Adds files to synchronized dir")
-                .arg(Arg::with_name("file-path")
-                        .multiple(true)
-                        .required(true)
-                ),
+                .args(&[
+                      Arg::with_name("file-path")
+                          .multiple(true).required(true),
+                      Arg::with_name("space-dir")
+                          .short("d")
+                          .takes_value(true)
+                          .help("Specifies dir in which file is added (default: 'homedir')")
+                          .required(false),
+                ])
         )
         .subcommand(
             SubCommand::with_name("remove")
                 .about("Removes files from synchronized dir")
                 .arg(Arg::with_name("file-path")
-                        .multiple(true)
-                        .required(true)
+                        .multiple(true).required(true)
                 )
         )
         .subcommand(
@@ -411,15 +407,14 @@ fn main() {
         Some("add") => {
             if let Some(ref matches) = matches.subcommand_matches("add") {
                 let file_paths: Vec<_> = matches.values_of("file-path").unwrap().collect();
-                let space_dir = matches.value_of("space_dir").unwrap_or("homedir");
+                let space_dir = matches.value_of("space-dir").unwrap_or("homedir");
                 action_add(&file_paths, &space_dir);
             }
         },
         Some("remove") => {
             if let Some(ref matches) = matches.subcommand_matches("remove") {
                 let file_paths: Vec<_> = matches.values_of("file-path").unwrap().collect();
-                let space_dir = matches.value_of("space_dir").unwrap_or("homedir");
-                action_remove(&file_paths, space_dir);
+                action_remove(&file_paths);
             }
         },
         Some("apply") => {

@@ -64,7 +64,7 @@ ubuntu@ff-test:~/dot-files$ tree . -a
 .
 ├── ff
 ├── .git
-    # .. cut usless output
+    # .. cut useless output
 ├── homedir
 │   └── .bashrc
 └── README.md
@@ -86,7 +86,7 @@ nothing added to commit but untracked files present (use "git add" to track)
 ubuntu@ff-test:~/dot-files$ git ci -am "added bashrc and ff"
 ubuntu@ff-test:git push
 
-# .. cut usless output
+# .. cut useless output
 
 ```
 
