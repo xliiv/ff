@@ -1,4 +1,6 @@
 language: rust
+services:
+  - docker
 rust:
   - stable
   - beta
@@ -6,3 +8,7 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+script:
+  - cargo build --verbose
+  - cargo test --verbose
+  - cd tests/ && bash run_tests.sh
