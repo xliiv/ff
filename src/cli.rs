@@ -7,10 +7,24 @@ use config::*;
 use core::*;
 
 fn action_init(dir_path: &str) {
-    init(
+    // TODO:: make it separate function
+    // TODO:: dir_path must be descendant of home dir
+    // 
+	// let home_dir = match std::env::home_dir() {
+	// 	None => return Err("unknown home dir path".to_owned()),
+	// 	Some(v) => v,
+	// };
+	// if !Path::new(&sync_dir).starts_with(&home_dir) {
+	// 	println!("{:?}, {:?}", &sync_dir, &home_dir);
+	// 	return Err("sync_dir should be descendant of home dir".to_owned());
+	// }
+
+    if let Err(e) = init(
         dir_path,
         get_config_file_path().to_str().unwrap(),
-    );
+    ) {
+        println!("{}", e);
+    }
 }
 
 fn action_add(file_paths: &Vec<&str>, space: &str) {
@@ -26,20 +40,23 @@ fn action_remove(file_paths: &Vec<&str>) {
 }
 
 fn action_apply(space_dir: &str) {
-    let mut tracking_dir = PathBuf::from(get_sync_dir_path());
+    let mut sync_dir = PathBuf::from(get_sync_dir_path());
     if space_dir != "" {
-        tracking_dir = tracking_dir.join(space_dir);
+        //TODO:: bug, unused var
+        sync_dir = sync_dir.join(space_dir);
     }
-    apply(
+    if let Err(e) = apply(
         &get_space_dir_path(space_dir).to_str().unwrap(),
         &get_space_dir_path(space_dir).to_str().unwrap(),
         std::env::home_dir().unwrap().to_str().unwrap(),
-    );
+    ) {
+        println!("{}", e);
+    }
 }
 
 /// Defines and initialize command line dispatcher which run suitable actions
 pub fn run_cli() {
-    let matches = app_from_crate!()
+    let mut app = app_from_crate!()
         .version(crate_version!())
         .about("\n\
             `ff` helps you manage dot files by:\n\n\
@@ -79,8 +96,9 @@ pub fn run_cli() {
                 .arg(
                     Arg::with_name("space-dir")
                 )
-        )
-        .get_matches();
+        );
+
+    let matches = app.clone().get_matches();
 
     // apply matching
     match matches.subcommand_name() {
@@ -109,7 +127,9 @@ pub fn run_cli() {
                 action_apply(space_dir);
             }
         },
-        None => println!("No subcommand was given"),
-        _ => println!("see help for available commands"),
+        _ => {
+            app.print_help().expect("Can't print help");
+            ()
+        },
     }
 }
