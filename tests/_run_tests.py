@@ -36,18 +36,13 @@ def _teardown_test():
 
 class Setup:
     def setUp(self):
-        _teardown_test()
         _setup_test()
         shutil.copyfile("/tests/ff", os.path.join(DOT_FILES_DIR, FF))
-        self._do_init()
-
-    def tearDown(self):
-        _teardown_test()
-
-    def _do_init(self):
         os.chdir(DOT_FILES_DIR)
         subp.run([FF_PATH, 'init', '.'], stdout=subp.DEVNULL)
 
+    def tearDown(self):
+        _teardown_test()
 
 
 class TestAll(Setup, unittest.TestCase):
@@ -85,18 +80,32 @@ class TestAll(Setup, unittest.TestCase):
 
 
 class TestApply(Setup, unittest.TestCase):
-    def test_apply_works(self):
+    def setUp(self):
+        super().setUp()
         os.makedirs(DOT_FILES_SPACE)
-        file_name = '.bashrc'
-        file_to_symlink = os.path.join(DOT_FILES_SPACE, file_name)
-        Path(file_to_symlink).touch()
+        self.file_name = '.bashrc'
+        self.file_to_symlink = os.path.join(DOT_FILES_SPACE, self.file_name)
+        self.file_symlinked = os.path.join(HOME_DIR, self.file_name)
+        Path(self.file_to_symlink).touch()
+
+    def test_apply_works_When_homedir_file_missing(self):
+        os.remove(self.file_symlinked)
+        self.assertFalse(os.path.exists(self.file_symlinked))
 
         subp.run([FF_PATH, 'apply'], stdout=subp.DEVNULL)
 
-        self.assertFalse(os.path.islink(file_to_symlink))
+        self.assertFalse(os.path.islink(self.file_to_symlink))
+        self.assertTrue(os.path.islink(self.file_symlinked))
+
+    def test_apply_works_When_homedir_file_exists(self):
+        self.assertTrue(os.path.exists(self.file_symlinked))
+
+        subp.run([FF_PATH, 'apply'], stdout=subp.DEVNULL)
+
+        self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(
             os.path.islink(
-                os.path.join(HOME_DIR, file_name)
+                os.path.join(HOME_DIR, self.file_name)
             )
         )
 

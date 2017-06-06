@@ -17,6 +17,7 @@ use cli::*;
 // TODO::
 // errors handling!!
 // clippy
+// fmt
 // replace tracking-dir with sync-dir (inc. readme)
 // keep trakcing-dir as ~/<path-tracking-dir> in cnofig file
 // adding(removing) dir? should walk over each file and `add` (`remove`) them
