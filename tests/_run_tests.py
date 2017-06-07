@@ -5,6 +5,13 @@ import unittest
 from pathlib import Path
 
 
+show_stdout = os.environ.get("FF_TEST_SHOW_STDOUT", "False")
+if show_stdout.lower() in ['1', 'true', 'yes']:
+    STDOUT = None
+else:
+    STDOUT = subp.DEVNULL
+
+
 HOME_DIR = os.path.expanduser("~")
 DOT_FILES_DIR = os.path.join(HOME_DIR, "dot-files")
 DOT_FILES_SPACE = "homedir"
@@ -39,7 +46,7 @@ class Setup:
         _setup_test()
         shutil.copyfile("/tests/ff", os.path.join(DOT_FILES_DIR, FF))
         os.chdir(DOT_FILES_DIR)
-        subp.run([FF_PATH, 'init', '.'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'init', '.'], stdout=STDOUT)
 
     def tearDown(self):
         _teardown_test()
@@ -52,7 +59,7 @@ class TestAll(Setup, unittest.TestCase):
     def test_add_works(self):
         os.chdir(HOME_DIR)
 
-        subp.run([FF_PATH, 'add', '.bashrc'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'add', '.bashrc'], stdout=STDOUT)
 
         self.assertTrue(
             os.path.exists(
@@ -65,9 +72,9 @@ class TestAll(Setup, unittest.TestCase):
 
     def test_remove_works(self):
         os.chdir(HOME_DIR)
-        subp.run([FF_PATH, 'add', '.bashrc'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'add', '.bashrc'], stdout=STDOUT)
 
-        subp.run([FF_PATH, 'remove', '.bashrc'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'remove', '.bashrc'], stdout=STDOUT)
 
         self.assertFalse(
             os.path.exists(
@@ -92,7 +99,7 @@ class TestApply(Setup, unittest.TestCase):
         os.remove(self.file_symlinked)
         self.assertFalse(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'apply'], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(os.path.islink(self.file_symlinked))
@@ -100,7 +107,7 @@ class TestApply(Setup, unittest.TestCase):
     def test_apply_works_When_homedir_file_exists(self):
         self.assertTrue(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply'], stdout=subp.DEVNULL)
+        subp.run([FF_PATH, 'apply'], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(

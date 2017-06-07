@@ -1,5 +1,9 @@
 FROM python:3.6
 
+ARG FF_TEST_PATH
+ARG FF_TEST_SHOW_STDOUT
+ENV FF_TEST_SHOW_STDOUT=$FF_TEST_SHOW_STDOUT
+
 ADD . tests
 WORKDIR tests
-RUN python3 _run_tests.py
+RUN python3 _run_tests.py $FF_TEST_PATH
