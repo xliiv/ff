@@ -1,12 +1,21 @@
 //! defines CLI for ff
 use std;
+use std::env;
 use std::path::PathBuf;
-use clap::*;
+use clap::{SubCommand, Arg};
 
 use config::*;
 use core::*;
 
-fn action_init(dir_path: &str) {
+/// Returns path to config file
+pub fn get_config_file_path() -> PathBuf {
+	let mut config_dir = env::home_dir().unwrap();
+	config_dir.push(".ff");
+	config_dir.push("config.ini");
+	return config_dir
+}
+
+fn action_init(dir_path: &str, config: Config) {
     // TODO:: make it separate function
     // TODO:: dir_path must be descendant of home dir
     // 
@@ -19,35 +28,55 @@ fn action_init(dir_path: &str) {
 	// 	return Err("sync_dir should be descendant of home dir".to_owned());
 	// }
 
-    if let Err(e) = init(
-        dir_path,
-        get_config_file_path().to_str().unwrap(),
-    ) {
+    if let Err(e) = init(dir_path, config) {
         println!("{}", e);
     }
 }
 
-fn action_add(file_paths: &Vec<&str>, space: &str) {
+fn action_add(file_paths: &Vec<&str>, space_dir: &str, config: Config) {
+    let sync_dir = match with_space_dir(space_dir, config) {
+        Err(e) => {
+            println!("{}", e);
+            return
+        }
+        Ok(v) => v,
+    };
     add_files(
         file_paths,
         std::env::home_dir().unwrap().to_str().unwrap(),
-        get_space_dir_path(&space).to_str().unwrap()
+        &sync_dir.to_str().unwrap(),
     );
+}
+
+fn with_space_dir(space_dir: &str, config: Config) -> Result<PathBuf, String> {
+    let sync_dir = config.get("sync-dir")
+        .map_err(|e| format!("Can't read sync-dir from {} ({})", config.get_path(), e))?
+        .ok_or(
+            format!("Can't find 'sync-dir' value in config file: {}
+                    Did you run: 'ff init' on your sync-dir?", config.get_path())
+        )?;
+    let mut sync_dir = PathBuf::from(sync_dir);
+    if space_dir != "" {
+        sync_dir = sync_dir.join(space_dir);
+    }
+    Ok(sync_dir)
 }
 
 fn action_remove(file_paths: &Vec<&str>) {
     remove_files(file_paths);
 }
 
-fn action_apply(space_dir: &str) {
-    let mut sync_dir = PathBuf::from(get_sync_dir_path());
-    if space_dir != "" {
-        //TODO:: bug, unused var
-        sync_dir = sync_dir.join(space_dir);
-    }
+fn action_apply(space_dir: &str, config: Config) {
+    let sync_dir = match with_space_dir(space_dir, config) {
+        Err(e) => {
+            println!("{}", e);
+            return
+        }
+        Ok(v) => v,
+    };
     if let Err(e) = apply(
-        &get_space_dir_path(space_dir).to_str().unwrap(),
-        &get_space_dir_path(space_dir).to_str().unwrap(),
+        &sync_dir.to_str().unwrap(),
+        &sync_dir.to_str().unwrap(),
         std::env::home_dir().unwrap().to_str().unwrap(),
     ) {
         println!("{}", e);
@@ -56,6 +85,7 @@ fn action_apply(space_dir: &str) {
 
 /// Defines and initialize command line dispatcher which run suitable actions
 pub fn run_cli() {
+    let config = Config::new(get_config_file_path().to_str().unwrap()).unwrap();
     let mut app = app_from_crate!()
         .version(crate_version!())
         .about("\n\
@@ -104,14 +134,15 @@ pub fn run_cli() {
     match matches.subcommand_name() {
         Some("init") => {
             if let Some(ref matches) = matches.subcommand_matches("init") {
-                action_init(matches.value_of("dir-path").unwrap());
+                action_init(matches.value_of("dir-path").unwrap(), config);
             }
         },
         Some("add") => {
             if let Some(ref matches) = matches.subcommand_matches("add") {
                 let file_paths: Vec<_> = matches.values_of("file-path").unwrap().collect();
+                // TODO: space-dir should be optional
                 let space_dir = matches.value_of("space-dir").unwrap_or("homedir");
-                action_add(&file_paths, &space_dir);
+                action_add(&file_paths, &space_dir, config);
             }
         },
         Some("remove") => {
@@ -124,7 +155,7 @@ pub fn run_cli() {
             if let Some(ref matches) = matches.subcommand_matches("apply") {
                 //TODO:: default should be provided by clap
                 let space_dir = matches.value_of("space_dir").unwrap_or("homedir");
-                action_apply(space_dir);
+                action_apply(space_dir, config);
             }
         },
         _ => {
