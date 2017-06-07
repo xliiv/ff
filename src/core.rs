@@ -5,9 +5,7 @@ use std::path::PathBuf;
 use std::os::unix::fs as unix_fs;
 use std::path::Path;
 use std::result::Result;
-use std::error::Error;
 
-use ini::Ini;
 use walkdir::{WalkDir, DirEntry};
 
 use config::*;
@@ -33,49 +31,29 @@ fn swap_path_bases(text: &str, old_value: &str, new_value: &str) -> String {
 }
 
 
-/// Returns joined `space_name` with absolute `sync-dir` path
-pub fn get_space_dir_path(space_name: &str) -> PathBuf {
-	let mut dst_with_space = PathBuf::from(get_sync_dir_path());
-	if space_name != "" {
-		dst_with_space.push(space_name);
+/// Saves `sync_dir` in config `config` for further use
+pub fn init(sync_dir: &str, config: Config) -> Result<(), String> {
+	let mut abs_sync_dir = PathBuf::from(sync_dir);
+	if !std::path::Path::new(&sync_dir).is_absolute() {
+		let mut abs_dst = std::env::current_dir().map_err(|e| e.to_string())?;
+		abs_dst.push(sync_dir);
+		abs_sync_dir = abs_dst;
 	}
-	return dst_with_space;
-}
+	// next two lines can't be merged because of borrow error which i can't resolvec yet
+	let abs_sync_dir = fs::canonicalize(&abs_sync_dir)
+		.map_err(|e| format!("Can't canonicalize: {:?} ({})", &abs_sync_dir, e))?;
+	let abs_sync_dir = abs_sync_dir.as_path()
+		.to_str()
+		.ok_or(format!("Can't convert to str: {:?}", &abs_sync_dir))?;
 
-
-/// Saves `sync_dir` in config at `config_path` for further use
-pub fn init(sync_dir: &str, config_path: &str) -> Result<(), String> {
-	let abs_dst = match std::env::current_dir() {
-		Err(e) => return Err(e.description().to_owned()),
-		Ok(v) => v,
+	let old_path = config.get("sync-dir")?;
+	config.set("sync-dir", abs_sync_dir)?;
+	if let Some(p) = old_path {
+		if p != abs_sync_dir {
+			println!("Sync-dir overwritten (old value was: {:?})", p);
+		};
 	};
-
-	let dir_to_init = match std::path::Path::new(&sync_dir).is_absolute() {
-		true => std::path::Path::new(&sync_dir),
-		false => std::path::Path::new(&abs_dst),
-	};
-	
-	// TODO:: config should be separate thing which here is passed
-	let path = Path::new(config_path);
-	if path.parent().unwrap().exists() == false {
-		// errors:  io::error
-		std::fs::create_dir(
-			// errors:  io::error
-			path.parent().unwrap()
-		).unwrap();
-	}
-	//TODO: show msg when overwritten
-	//let overwritten = false;
-	let mut conf = Ini::new();
-	conf.with_section(None::<String>).set("tracking-dir", dir_to_init.to_str().unwrap());
-	conf.write_to_file(config_path).unwrap();
-	//if conf.get("tracking-dir") {
-	//    let old_path = get_sync_dir_path();
-	//}
-	//if overwritten {
-	//	println!("Overwritting old path which was: {}", old_path);
-	//}
-	println!("Set tracking-dir to: {}", dir_to_init.display());
+	println!("Set tracking-dir to: {:?}", abs_sync_dir);
 	Ok(())
 }
 
@@ -214,14 +192,13 @@ pub fn symlink_file(sync_file: DirEntry, sync_dir: &str, home_dir: &str) -> Resu
 
 #[cfg(test)]
 mod tests {
+	use super::*;
 	use std::fs::File;
 	use std::fs;
 	use std::io::prelude::*;
 	use std::path::Path;
 	use std::os::unix::fs as unix_fs;
 	use tempdir::TempDir;
-
-	use super::*;
 
 	#[test]
 	fn init_saves_dir_to_init_in_config_file() {
@@ -230,13 +207,11 @@ mod tests {
 		let config_file = config_dir.path().join("config.ini");
 		let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
 		let ok_content = format!(
-			"tracking-dir={}\n", sync_dir.path().to_str().unwrap()
+			"sync-dir={}\n", sync_dir.path().to_str().unwrap()
 		);
+		let config = Config::new(config_file.as_path().to_str().unwrap()).unwrap();
 
-		let result = init(
-			sync_dir.path().to_str().unwrap(),
-			config_file.to_str().unwrap(),
-		).unwrap();
+		let result = init(sync_dir.path().to_str().unwrap(), config).unwrap();
 
 		assert_eq!(result, ());
 		let mut f = File::open(config_file).unwrap();
