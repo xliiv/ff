@@ -32,8 +32,8 @@ impl Config {
     fn create_config_dir(&self) -> Result<(), String> {
         let path = Path::new(&self.path);
         let parent_dir = path.parent()
-            .ok_or(format!("Can't get parent for {}", self.path))?;
-        if parent_dir.exists() == false {
+            .ok_or_else(|| format!("Can't get parent for {}", self.path))?;
+        if !parent_dir.exists() {
             std::fs::create_dir_all(&parent_dir)
                 .map_err(|e| format!("Can't create config file dir: {:?} ({})", &parent_dir, e))?;
         }
