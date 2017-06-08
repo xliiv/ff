@@ -1,7 +1,7 @@
 //! defines CLI for ff
 use std;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use clap::{SubCommand, Arg};
 
 use config::*;
@@ -15,20 +15,51 @@ pub fn get_config_file_path() -> PathBuf {
 	return config_dir
 }
 
-fn action_init(dir_path: &str, config: Config) {
-    // TODO:: make it separate function
-    // TODO:: dir_path must be descendant of home dir
-    // 
-	// let home_dir = match std::env::home_dir() {
-	// 	None => return Err("unknown home dir path".to_owned()),
-	// 	Some(v) => v,
-	// };
-	// if !Path::new(&sync_dir).starts_with(&home_dir) {
-	// 	println!("{:?}, {:?}", &sync_dir, &home_dir);
-	// 	return Err("sync_dir should be descendant of home dir".to_owned());
-	// }
+fn home_dir_contained<T: AsRef<Path>>(dir: T) -> Result<bool, String> {
+    let home_dir = std::env::home_dir()
+        .ok_or("Can't find home dir")?;
+    Ok(dir.as_ref().starts_with(&home_dir))
+}
 
-    if let Err(e) = init(dir_path, config) {
+fn action_init(sync_dir: &str, config: Config) {
+    let _sync_dir = match sync_dir.len() {
+        0 => match std::env::current_dir() {
+            Err(e) => {
+                println!("Can't get home dir ({})", e);
+                return
+            },
+            Ok(v) => v,
+        },
+        _ => Path::new(sync_dir).to_path_buf(),
+    };
+    let _sync_dir = match std::fs::canonicalize(&_sync_dir) {
+        Err(e) => {
+            println!("Can't canonicalize: {:?} ({})", &_sync_dir, e);
+            return;
+        },
+        Ok(v) => v,
+    };
+    let is_home_dir = match home_dir_contained(&_sync_dir) {
+        Err(e) => {
+            println!("Can't validate if {:?} is descendat of home dir ({})", &_sync_dir, e);
+            return 
+        },
+        Ok(v) => v,
+    };
+    if !is_home_dir {
+        println!("Sync dir should be descendant of home dir");
+        return;
+    }
+
+    // TODO1: tmp conversion until code after action_ is moved to PathBuf 
+    let _sync_dir = match _sync_dir.as_path().to_str() {
+        None => {
+            println!("Can't convert {:?} to str", _sync_dir);
+            return
+        },
+        Some(v) => v,
+    };
+    if let Err(e) = init(_sync_dir, config) {
         println!("{}", e);
     }
 }
@@ -95,9 +126,10 @@ pub fn run_cli() {
         ")
         .subcommand(
             SubCommand::with_name("init")
-                .about("Sets dir as dir being synchronized")
+                .about("Sets dir as sync-dir")
                 .arg(Arg::with_name("dir-path")
-                        .required(true)
+                        .required(false)
+                        .help("Sets dir as sync-dir (which means dot-files will be stored there and you sync that dir)")
                 ),
         )
         .subcommand(
@@ -134,7 +166,7 @@ pub fn run_cli() {
     match matches.subcommand_name() {
         Some("init") => {
             if let Some(ref matches) = matches.subcommand_matches("init") {
-                action_init(matches.value_of("dir-path").unwrap(), config);
+                action_init(matches.value_of("dir-path").unwrap_or(""), config);
             }
         },
         Some("add") => {
