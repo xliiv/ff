@@ -27,18 +27,20 @@ fn swap_path_bases(text: &str, old_value: &str, new_value: &str) -> String {
     // add() uses text as std::path::Path
     // apply() uses text as std::path::Path
     let new = text.replace(old_value, new_value);
-    return String::from(new);
+    String::from(new)
 }
 
 
 /// Saves `sync_dir` in config `config` for further use
-pub fn init(sync_dir: &str, config: Config) -> Result<(), String> {
-    let mut abs_sync_dir = PathBuf::from(sync_dir);
-    if !std::path::Path::new(&sync_dir).is_absolute() {
+pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
+    let abs_sync_dir = if std::path::Path::new(&sync_dir).is_absolute() {
+        PathBuf::from(sync_dir)
+    } else {
         let mut abs_dst = std::env::current_dir().map_err(|e| e.to_string())?;
         abs_dst.push(sync_dir);
-        abs_sync_dir = abs_dst;
-    }
+        abs_dst
+    };
+
     // next two lines can't be merged because of borrow error which i can't resolvec yet
     let abs_sync_dir =
         fs::canonicalize(&abs_sync_dir)
@@ -46,7 +48,7 @@ pub fn init(sync_dir: &str, config: Config) -> Result<(), String> {
     let abs_sync_dir = abs_sync_dir
         .as_path()
         .to_str()
-        .ok_or(format!("Can't convert to str: {:?}", &abs_sync_dir))?;
+        .ok_or_else(|| format!("Can't convert to str: {:?}", &abs_sync_dir))?;
 
     let old_path = config.get("sync-dir")?;
     config.set("sync-dir", abs_sync_dir)?;
@@ -74,7 +76,7 @@ pub fn add(file_path: &str, home_dir: &str, sync_dir: &str) -> Result<(), String
     let abs_dst_parent = Path::new(&abs_dst)
         .parent()
         .and_then(|p| p.to_str())
-        .ok_or(format!("Can't get parent of: {:?}", &abs_dst))?;
+        .ok_or_else(|| format!("Can't get parent of: {:?}", &abs_dst))?;
 
     if let Err(e) = fs::create_dir_all(abs_dst_parent) {
         return Err(format!("Can't create sync-dir: {}", e.to_string()));
@@ -93,7 +95,7 @@ pub fn add(file_path: &str, home_dir: &str, sync_dir: &str) -> Result<(), String
         if let Err(e) = std::fs::rename(&abs_dst, &file_path) {
             return Err(format!("Can't revert file move ({}) - clean it MANUALLY ", e));
         } else {
-            return Err(format!("File move reverted"));
+            return Err("File move reverted".to_owned());
         }
     }
     println!("added: {} (to: {})", file_path, abs_dst);
@@ -102,7 +104,7 @@ pub fn add(file_path: &str, home_dir: &str, sync_dir: &str) -> Result<(), String
 
 /// Adds all files contained in `file_paths` to `sync-dir`
 /// (see: `ff::core::add` for details)
-pub fn add_files(file_paths: &Vec<&str>, home_dir: &str, sync_dir: &str) {
+pub fn add_files(file_paths: &[&str], home_dir: &str, sync_dir: &str) {
     for file_path in file_paths {
         if let Err(e) = add(file_path, home_dir, sync_dir) {
             println!("{}", e);
@@ -125,7 +127,7 @@ pub fn remove(symlinked: &str) -> Result<(), String> {
 
 /// Removes all files contained in `file_paths` from `sync-dir`
 /// (see: `ff::core::remove` for details)
-pub fn remove_files(file_paths: &Vec<&str>) {
+pub fn remove_files(file_paths: &[&str]) {
     for file_path in file_paths {
         if let Err(e) = remove(file_path) {
             println!("{}", e);
@@ -143,7 +145,7 @@ pub fn apply(to_walk: &str, sync_dir: &str, home_dir: &str) -> Result<(), String
             }
             Ok(v) => v,
         };
-        if let Err(e) = symlink_file(sync_file, &sync_dir, &home_dir) {
+        if let Err(e) = symlink_file(&sync_file, sync_dir, home_dir) {
             println!("SKIPPING: {}", e);
         }
     }
@@ -158,7 +160,7 @@ pub fn apply(to_walk: &str, sync_dir: &str, home_dir: &str) -> Result<(), String
 /// Assuming that there is a `.bashrc` file in `/home/joe/sync-dir` dir
 ///
 /// `symlink_file(
-///    WalkDir::DirEntry("/home/joe/sync-dir/.bashrc"), "/home/joe/sync-dir", "/home/joe"
+///    &WalkDir::DirEntry("/home/joe/sync-dir/.bashrc"), "/home/joe/sync-dir", "/home/joe"
 /// )`
 ///
 /// will result as replacing:
@@ -169,23 +171,24 @@ pub fn apply(to_walk: &str, sync_dir: &str, home_dir: &str) -> Result<(), String
 ///
 /// `/home/joe/sync-dir/.bashrc`
 ///
-pub fn symlink_file(sync_file: DirEntry, sync_dir: &str, home_dir: &str) -> Result<(), String> {
+pub fn symlink_file(sync_file: &DirEntry, sync_dir: &str, home_dir: &str) -> Result<(), String> {
     let content_item_data =
         std::fs::metadata(sync_file.path())
             .map_err(|e| format!("Can't get file data {:?} ({})", &sync_file, e))?;
-    if content_item_data.is_file() == false {
+    if !content_item_data.is_file() {
         return Ok(());
     }
     let src_path = sync_file
         .path()
         .to_str()
-        .ok_or(format!("Can't convert src file: {:?}", &sync_file))?;
-    let user_file = swap_path_bases(&src_path, &sync_dir, &home_dir);
+        .ok_or_else(|| format!("Can't convert src file: {:?}", &sync_file))?;
+    let user_file = swap_path_bases(src_path, sync_dir, home_dir);
     let user_file = Path::new(&user_file);
-    let user_file_dir = user_file
-        .parent()
-        .and_then(|p| p.to_str())
-        .ok_or(format!("Can't get parent dir for file: {:?}", &user_file))?;
+    let user_file_dir =
+        user_file
+            .parent()
+            .and_then(|p| p.to_str())
+            .ok_or_else(|| format!("Can't get parent dir for file: {:?}", &user_file))?;
     if let Err(e) = fs::create_dir_all(user_file_dir) {
         return Err(format!("Can't create dir: {} ({})", user_file_dir, e));
     }
@@ -221,7 +224,7 @@ mod tests {
         let ok_content = format!("sync-dir={}\n", sync_dir.path().to_str().unwrap());
         let config = Config::new(config_file.as_path().to_str().unwrap()).unwrap();
 
-        let result = init(sync_dir.path().to_str().unwrap(), config).unwrap();
+        let result = init(sync_dir.path().to_str().unwrap(), &config).unwrap();
 
         assert_eq!(result, ());
         let mut f = File::open(config_file).unwrap();

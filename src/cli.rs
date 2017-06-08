@@ -20,7 +20,7 @@ fn home_dir_contained<T: AsRef<Path>>(dir: T) -> Result<bool, String> {
     Ok(dir.as_ref().starts_with(&home_dir))
 }
 
-fn action_init(sync_dir: &str, config: Config) {
+fn action_init(sync_dir: &str, config: &Config) {
     let _sync_dir = match sync_dir.len() {
         0 => {
             match std::env::current_dir() {
@@ -67,22 +67,24 @@ fn action_init(sync_dir: &str, config: Config) {
     }
 }
 
-fn action_add(file_paths: &Vec<&str>, space_dir: &str, config: Config) -> Result<(), String> {
+fn action_add(file_paths: &[&str], space_dir: &str, config: &Config) -> Result<(), String> {
     let home_dir = env::home_dir().ok_or("Can't get home dir")?;
     let home_dir = home_dir.to_str().ok_or("Can't convert home dir to str")?;
     let sync_dir = with_space_dir(space_dir, config)?;
     let sync_dir = sync_dir.to_str().ok_or("Can't convert home dir to str")?;
-    add_files(file_paths, &home_dir, &sync_dir);
+    add_files(file_paths, home_dir, sync_dir);
     Ok(())
 }
 
-fn with_space_dir(space_dir: &str, config: Config) -> Result<PathBuf, String> {
+fn with_space_dir(space_dir: &str, config: &Config) -> Result<PathBuf, String> {
     let sync_dir = config
         .get("sync-dir")
         .map_err(|e| format!("Can't read sync-dir from {} ({})", config.get_path(), e))?
-        .ok_or(format!("Can't find 'sync-dir' value in config file: {}\n\
+        .ok_or_else(|| {
+                        format!("Can't find 'sync-dir' value in config file: {}\n\
 					Did you run: 'ff init' on your sync-dir?",
-                       config.get_path()))?;
+                                config.get_path())
+                    })?;
     let mut sync_dir = PathBuf::from(sync_dir);
     if space_dir != "" {
         sync_dir = sync_dir.join(space_dir);
@@ -90,20 +92,20 @@ fn with_space_dir(space_dir: &str, config: Config) -> Result<PathBuf, String> {
     Ok(sync_dir)
 }
 
-fn action_remove(file_paths: &Vec<&str>) {
+fn action_remove(file_paths: &[&str]) {
     remove_files(file_paths);
 }
 
-fn action_apply(space_dir: &str, config: Config) -> Result<(), String> {
-    let sync_dir = with_space_dir(&space_dir, config)?;
+fn action_apply(space_dir: &str, config: &Config) -> Result<(), String> {
+    let sync_dir = with_space_dir(space_dir, config)?;
     let sync_dir = sync_dir
         .to_str()
         .ok_or("Can't convert sync-dir with space to str")?;
     let home_dir = std::env::home_dir().ok_or("Can't get home dir")?;
     let home_dir = home_dir
         .to_str()
-        .ok_or(format!("Can't convert home dir to str"))?;
-    apply(&sync_dir, &sync_dir, &home_dir)
+        .ok_or_else(|| "Can't convert home dir to str".to_owned())?;
+    apply(sync_dir, sync_dir, home_dir)
 }
 
 /// Defines and initialize command line dispatcher which run suitable actions
@@ -173,25 +175,24 @@ pub fn run_cli() {
     // apply matching
     match matches.subcommand_name() {
         Some("init") => {
-            if let Some(ref matches) = matches.subcommand_matches("init") {
-                action_init(matches.value_of("dir-path").unwrap_or(""), config);
+            if let Some(matches) = matches.subcommand_matches("init") {
+                action_init(matches.value_of("dir-path").unwrap_or(""), &config);
             }
         }
         Some("add") => {
-            if let Some(ref matches) = matches.subcommand_matches("add") {
+            if let Some(matches) = matches.subcommand_matches("add") {
                 let file_paths: Vec<_> = matches
                     .values_of("file-path")
                     .expect("Can't get file paths")
                     .collect();
                 let space_dir = matches.value_of("space-dir").unwrap_or("");
-                match action_add(&file_paths, &space_dir, config) {
-                    Err(e) => println!("{}", e),
-                    Ok(_) => (),
+                if let Err(e) = action_add(&file_paths, space_dir, &config) {
+                    println!("{}", e);
                 }
             }
         }
         Some("remove") => {
-            if let Some(ref matches) = matches.subcommand_matches("remove") {
+            if let Some(matches) = matches.subcommand_matches("remove") {
                 let file_paths: Vec<_> = matches
                     .values_of("file-path")
                     .expect("Can't read file paths to remove")
@@ -200,11 +201,10 @@ pub fn run_cli() {
             }
         }
         Some("apply") => {
-            if let Some(ref matches) = matches.subcommand_matches("apply") {
+            if let Some(matches) = matches.subcommand_matches("apply") {
                 let space_dir = matches.value_of("space-dir").unwrap_or("");
-                match action_apply(space_dir, config) {
-                    Err(e) => println!("{}", e),
-                    Ok(_) => (),
+                if let Err(e) = action_apply(space_dir, &config) {
+                    println!("{}", e);
                 }
             }
         }
