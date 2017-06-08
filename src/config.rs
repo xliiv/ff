@@ -5,6 +5,7 @@ use ini::Ini;
 
 
 /// Config manager storing data in files
+#[derive(Debug)]
 pub struct Config {
 	path: String,
 }
