@@ -80,7 +80,7 @@ fn with_space_dir(space_dir: &str, config: Config) -> Result<PathBuf, String> {
 	let sync_dir = config.get("sync-dir")
 		.map_err(|e| format!("Can't read sync-dir from {} ({})", config.get_path(), e))?
 		.ok_or(
-			format!("Can't find 'sync-dir' value in config file: {}
+			format!("Can't find 'sync-dir' value in config file: {}\n\
 					Did you run: 'ff init' on your sync-dir?", config.get_path())
 		)?;
 	let mut sync_dir = PathBuf::from(sync_dir);
