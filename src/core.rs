@@ -57,7 +57,7 @@ pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
             println!("Sync-dir overwritten (old value was: {:?})", p);
         };
     };
-    println!("Set tracking-dir to: {:?}", abs_sync_dir);
+    println!("Set sync-dir to: {:?}", abs_sync_dir);
     Ok(())
 }
 
@@ -236,19 +236,19 @@ mod tests {
     #[test]
     fn add_file_works_ok() {
         let homedir = TempDir::new("user1").unwrap();
-        let tracking_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let file_to_track = homedir.path().join(".vimrc");
-        File::create(&file_to_track).unwrap();
-        let tracked_file = tracking_dir.path().join(".vimrc");
-        assert_eq!(tracked_file.exists(), false);
+        let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
+        let file_to_sync = homedir.path().join(".vimrc");
+        File::create(&file_to_sync).unwrap();
+        let synced_file = sync_dir.path().join(".vimrc");
+        assert_eq!(synced_file.exists(), false);
 
-        add(file_to_track.to_str().unwrap(),
+        add(file_to_sync.to_str().unwrap(),
             &homedir.path().to_str().unwrap(),
-            &tracking_dir.path().to_str().unwrap())
+            &sync_dir.path().to_str().unwrap())
                 .unwrap();
 
-        assert_eq!(tracked_file.exists(), true);
-        assert_eq!(fs::symlink_metadata(file_to_track.to_str().unwrap())
+        assert_eq!(synced_file.exists(), true);
+        assert_eq!(fs::symlink_metadata(file_to_sync.to_str().unwrap())
                        .unwrap()
                        .file_type()
                        .is_symlink(),
@@ -258,31 +258,31 @@ mod tests {
     #[test]
     fn add_many_files_works_ok() {
         let homedir = TempDir::new("user1").unwrap();
-        let tracking_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let mut files_to_track = Vec::new();
-        let mut tracked_files = Vec::new();
+        let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
+        let mut files_to_sync = Vec::new();
+        let mut synced_files = Vec::new();
         for filename in vec![".vimrc", ".bashrc"] {
             let filepath = homedir.path().join(filename);
             File::create(&filepath).unwrap();
-            files_to_track.push(filepath);
-            tracked_files.push(tracking_dir.path().join(&filename).to_owned());
+            files_to_sync.push(filepath);
+            synced_files.push(sync_dir.path().join(&filename).to_owned());
         }
-        // checks file are not tracked
-        for file in &tracked_files {
+        // checks file are not synced
+        for file in &synced_files {
             assert_eq!(file.exists(), false);
         }
 
-        add_files(&files_to_track
+        add_files(&files_to_sync
                        .iter()
                        .map(|f| f.to_str().unwrap())
                        .collect::<Vec<_>>(),
                   homedir.path().to_str().unwrap(),
-                  tracking_dir.path().to_str().unwrap());
+                  sync_dir.path().to_str().unwrap());
 
-        // checks file are tracked
-        for (idx, path) in tracked_files.iter().enumerate() {
+        // checks file are synced
+        for (idx, path) in synced_files.iter().enumerate() {
             assert_eq!(path.exists(), true);
-            assert_eq!(fs::symlink_metadata(files_to_track[idx].to_str().unwrap())
+            assert_eq!(fs::symlink_metadata(files_to_sync[idx].to_str().unwrap())
                            .unwrap()
                            .file_type()
                            .is_symlink(),
@@ -318,19 +318,19 @@ mod tests {
     #[test]
     fn added_files_are_removed_correctly() {
         let homedir = TempDir::new("user1").unwrap();
-        let tracking_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let mut tracked_files = Vec::new();
+        let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
+        let mut synced_files = Vec::new();
         let mut files_to_restore = Vec::new();
         for filename in vec![".vimrc", ".bashrc"] {
-            let tracked_file = tracking_dir.path().join(&filename);
+            let synced_file = sync_dir.path().join(&filename);
             let file_to_restore = homedir.path().join(&filename);
 
-            File::create(&tracked_file).unwrap();
-            unix_fs::symlink(&tracked_file.to_str().unwrap(),
+            File::create(&synced_file).unwrap();
+            unix_fs::symlink(&synced_file.to_str().unwrap(),
                              &file_to_restore.to_str().unwrap())
                     .unwrap();
 
-            tracked_files.push(tracked_file);
+            synced_files.push(synced_file);
             files_to_restore.push(file_to_restore);
         }
         for file in &files_to_restore {
@@ -358,14 +358,14 @@ mod tests {
     #[test]
     fn apply_works_for_single_file_which_missing() {
         let homedir = TempDir::new("user1").unwrap();
-        let tracking_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let tracked_file = tracking_dir.path().join(".vimrc");
-        File::create(&tracked_file).unwrap();
+        let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
+        let synced_file = sync_dir.path().join(".vimrc");
+        File::create(&synced_file).unwrap();
         let user_file = homedir.path().join(".vimrc");
         assert_eq!(user_file.exists(), false);
 
-        let result = apply(&tracking_dir.path().to_str().unwrap(),
-                           &tracking_dir.path().to_str().unwrap(),
+        let result = apply(&sync_dir.path().to_str().unwrap(),
+                           &sync_dir.path().to_str().unwrap(),
                            &homedir.path().to_str().unwrap())
                 .unwrap();
 
@@ -380,16 +380,16 @@ mod tests {
     #[test]
     fn apply_works_for_single_file_which_exists() {
         let homedir = TempDir::new("user1").unwrap();
-        let tracking_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let tracked_file = tracking_dir.path().join(".vimrc");
-        File::create(&tracked_file).unwrap();
+        let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
+        let synced_file = sync_dir.path().join(".vimrc");
+        File::create(&synced_file).unwrap();
         let user_file = homedir.path().join(".vimrc");
         File::create(&user_file).unwrap();
         assert_eq!(fs::metadata(&user_file).unwrap().file_type().is_file(),
                    true);
 
-        let result = apply(&tracking_dir.path().to_str().unwrap(),
-                           &tracking_dir.path().to_str().unwrap(),
+        let result = apply(&sync_dir.path().to_str().unwrap(),
+                           &sync_dir.path().to_str().unwrap(),
                            &homedir.path().to_str().unwrap())
                 .unwrap();
 
