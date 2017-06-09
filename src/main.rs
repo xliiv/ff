@@ -16,7 +16,6 @@ use cli::*;
 
 // TODO:
 // add new readme
-// replace tracking-dir with sync-dir (inc. readme)
 // release version
 
 // adding(removing) dir? should walk over each file and `add` (`remove`) them

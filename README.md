@@ -44,7 +44,7 @@ drwxrwxr-x 8 ubuntu ubuntu    4096 Jul 24 11:02 .git/
 -rw-rw-r-- 1 ubuntu ubuntu      12 Jul 24 11:02 README.md
 
 ubuntu@ff-test:~/dot-files$ ./ff init .
-Set tracking-dir to: /home/ubuntu/dot-files/.
+Set sync-dir to: /home/ubuntu/dot-files/.
 
 ubuntu@ff-test:~/dot-files$ ./ff add ~/.bashrc 
 added: /home/ubuntu/.bashrc (to: /home/ubuntu/dot-files/./homedir/.bashrc)
@@ -122,7 +122,7 @@ drwxrwxr-x 2 ubuntu ubuntu    4096 Jul 24 11:32 homedir/
 -rw-rw-r-- 1 ubuntu ubuntu      12 Jul 24 11:32 README.md
 
 ubuntu@ff-test:~/dot-files$ ./ff init .
-Set tracking-dir to: /home/ubuntu/dot-files/.
+Set sync-dir to: /home/ubuntu/dot-files/.
 
 ubuntu@ff-test:~/dot-files$ ./ff apply
 symlinked: /home/ubuntu/.bashrc -> /home/ubuntu/dot-files/./homedir/.bashrc
