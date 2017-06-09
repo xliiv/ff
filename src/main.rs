@@ -15,6 +15,8 @@ use cli::*;
 
 
 // TODO:
+// add ignore-dir to settings .git, etc.
+// remove DirEntry() in msg "symlinked: .. -> .."
 // add new readme
 // release version
 

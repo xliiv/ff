@@ -122,6 +122,7 @@ pub fn remove(symlinked: &str) -> Result<(), String> {
                            &symlinked,
                            e));
     }
+    println!("removed: {} (from: {:?})", symlinked, regular_file);
     Ok(())
 }
 
