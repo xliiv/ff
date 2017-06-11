@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-ARG FF_LATEST_FF_URL
+ARG FF_TAG_NAME
 ENV FF_USER ff-demo
 
 RUN apt update
