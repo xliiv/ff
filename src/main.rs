@@ -15,10 +15,8 @@ use cli::*;
 
 
 // TODO:
-// add ignore-dir to settings .git, etc.
-// remove DirEntry() in msg "symlinked: .. -> .."
-// add new readme
 // release version
+// add new readme
 
 // adding(removing) dir? should walk over each file and `add` (`remove`) them
 // bash autocompletion: https://kbknapp.github.io/clap-rs/clap/struct.App.html#examples-35
