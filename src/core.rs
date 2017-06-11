@@ -1,9 +1,9 @@
 //! delivers functionlity of ff
 use std;
 use std::*;
+use std::path::Path;
 use std::path::PathBuf;
 use std::os::unix::fs as unix_fs;
-use std::path::Path;
 use std::result::Result;
 
 use walkdir::{WalkDir, DirEntry};
@@ -219,7 +219,7 @@ pub fn symlink_file(sync_file: &DirEntry, sync_dir: &str, home_dir: &str) -> Res
     if let Err(e) = unix_fs::symlink(&sync_file.path(), &user_file) {
         return Err(format!("Can't symlink {:?} to {:?} ({})", sync_file, user_file, e));
     }
-    println!("symlinked: {:?} -> {:?}", user_file, sync_file);
+    println!("symlinked: {:?} -> {:?}", user_file, sync_file.path());
     Ok(())
 }
 
