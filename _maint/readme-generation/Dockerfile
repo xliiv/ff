@@ -10,15 +10,15 @@ RUN apt install -y \
 
 ADD _utils.sh  .
 
-ADD generate-readme-for-apply.sh .
-RUN adduser --disabled-password --gecos "" $FF_USER
-USER $FF_USER
-RUN cd /home/$FF_USER && bash /generate-readme-for-apply.sh
-
-USER root
-RUN userdel -r $FF_USER
-
 ADD generate-readme-for-init.sh .
 RUN adduser --disabled-password --gecos "" $FF_USER
 USER $FF_USER
 RUN cd /home/$FF_USER && bash /generate-readme-for-init.sh
+
+USER root
+RUN userdel -r $FF_USER
+
+ADD generate-readme-for-apply.sh .
+RUN adduser --disabled-password --gecos "" $FF_USER
+USER $FF_USER
+RUN cd /home/$FF_USER && bash /generate-readme-for-apply.sh
