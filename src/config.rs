@@ -57,7 +57,8 @@ impl Config {
 
     /// Sets and save `value` under `key` in file
     pub fn set(&self, key: &str, value: &str) -> Result<(), String> {
-        let mut conf = Ini::new();
+        let mut conf = Ini::load_from_file(&self.path)
+            .map_err(|e| format!("Can't load config: {} ({})", &self.path, e))?;
         conf.with_section(None::<String>).set(key, value);
         if let Err(e) = conf.write_to_file(self.path.as_str()) {
             return Err(format!("Can't save {}={} to {} ({})", &key, &value, self.path, e));

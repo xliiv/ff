@@ -31,7 +31,7 @@ fn swap_path_bases(text: &str, old_value: &str, new_value: &str) -> String {
 }
 
 
-/// Saves `sync_dir` in config `config` for further use
+/// Saves defaults (like `sync_dir`, etc.) in config `config` for further use
 pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
     let abs_sync_dir = if std::path::Path::new(&sync_dir).is_absolute() {
         PathBuf::from(sync_dir)
@@ -51,6 +51,7 @@ pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
         .ok_or_else(|| format!("Can't convert to str: {:?}", &abs_sync_dir))?;
 
     let old_path = config.get("sync-dir")?;
+    config.set("ignore-when-apply", ".git,.hg")?;
     config.set("sync-dir", abs_sync_dir)?;
     if let Some(p) = old_path {
         if p != abs_sync_dir {
@@ -137,8 +138,12 @@ pub fn remove_files(file_paths: &[&str]) {
 }
 
 /// Calls `symlink_file` on each files contained in `to_walk`
-pub fn apply(to_walk: &str, sync_dir: &str, home_dir: &str) -> Result<(), String> {
-    for item_result in WalkDir::new(Path::new(&to_walk)) {
+pub fn apply(to_walk: &str,
+             sync_dir: &str,
+             home_dir: &str,
+             to_ignore: &[&str])
+             -> Result<(), String> {
+    'dir_item: for item_result in WalkDir::new(Path::new(&to_walk)) {
         let sync_file = match item_result {
             Err(e) => {
                 println!("SKIPPING ({})", e);
@@ -146,6 +151,19 @@ pub fn apply(to_walk: &str, sync_dir: &str, home_dir: &str) -> Result<(), String
             }
             Ok(v) => v,
         };
+
+        let rel_sync_file = sync_file
+            .path()
+            .to_str()
+            .ok_or_else(|| format!("Can't get str for: {:?}", &sync_file))?
+            .replace(sync_dir, "");
+        let rel_sync_file = rel_sync_file.trim_matches('/');
+        for ignore in to_ignore {
+            if rel_sync_file.starts_with(ignore) {
+                continue 'dir_item;
+            }
+        }
+
         if let Err(e) = symlink_file(&sync_file, sync_dir, home_dir) {
             println!("SKIPPING: {}", e);
         }
@@ -222,7 +240,6 @@ mod tests {
         let config_dir = TempDir::new_in(homedir.path(), ".ff").unwrap();
         let config_file = config_dir.path().join("config.ini");
         let sync_dir = TempDir::new_in(homedir.path(), "dot-files").unwrap();
-        let ok_content = format!("sync-dir={}\n", sync_dir.path().to_str().unwrap());
         let config = Config::new(config_file.as_path().to_str().unwrap()).unwrap();
 
         let result = init(sync_dir.path().to_str().unwrap(), &config).unwrap();
@@ -231,7 +248,11 @@ mod tests {
         let mut f = File::open(config_file).unwrap();
         let mut config_file_src = String::new();
         f.read_to_string(&mut config_file_src).unwrap();
-        assert_eq!(config_file_src, ok_content);
+        assert_eq!(config_file_src.contains("ignore-when-apply=.git,.hg\n"),
+                   true);
+        assert_eq!(config_file_src
+                       .contains(&format!("sync-dir={}\n", sync_dir.path().to_str().unwrap())),
+                   true);
     }
 
     #[test]
@@ -367,7 +388,8 @@ mod tests {
 
         let result = apply(&sync_dir.path().to_str().unwrap(),
                            &sync_dir.path().to_str().unwrap(),
-                           &homedir.path().to_str().unwrap())
+                           &homedir.path().to_str().unwrap(),
+                           &vec![])
                 .unwrap();
 
         assert_eq!(result, ());
@@ -391,7 +413,8 @@ mod tests {
 
         let result = apply(&sync_dir.path().to_str().unwrap(),
                            &sync_dir.path().to_str().unwrap(),
-                           &homedir.path().to_str().unwrap())
+                           &homedir.path().to_str().unwrap(),
+                           &vec![])
                 .unwrap();
 
         assert_eq!(result, ());

@@ -105,7 +105,18 @@ fn action_apply(space_dir: &str, config: &Config) -> Result<(), String> {
     let home_dir = home_dir
         .to_str()
         .ok_or_else(|| "Can't convert home dir to str".to_owned())?;
-    apply(sync_dir, sync_dir, home_dir)
+    let to_ignore = config
+        .get("ignore-when-apply")
+        .map_err(|e| {
+                     format!("Can't get ignore-when-apply from {} ({})",
+                             config.get_path(),
+                             e)
+                 })?;
+    let to_ignore = match to_ignore.as_ref() {
+        None => vec![],
+        Some(v) => v.split(',').collect(),
+    };
+    apply(sync_dir, sync_dir, home_dir, &to_ignore)
 }
 
 /// Defines and initialize command line dispatcher which run suitable actions

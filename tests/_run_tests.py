@@ -161,5 +161,21 @@ class TestApplyWithSpace(Setup, unittest.TestCase):
         )
 
 
+class TestApplySkipping(Setup, unittest.TestCase):
+    def test_apply_skips_files_in_git_dir(self):
+        ignored_dir = os.path.join(DOT_FILES_DIR, '.git')
+        os.makedirs(ignored_dir)
+        file_to_ignore = 'file-to-ignore'
+        ignored_file = os.path.join(ignored_dir, file_to_ignore)
+        Path(ignored_file).touch()
+        home_dir_file_to_ignore = os.path.join(HOME_DIR, file_to_ignore)
+        self.assertTrue(os.path.exists(ignored_file))
+        self.assertFalse(os.path.exists(home_dir_file_to_ignore))
+
+        subp.run([FF_PATH, 'apply'], stdout=STDOUT)
+
+        self.assertFalse(os.path.exists(home_dir_file_to_ignore))
+
+
 if __name__ == '__main__':
     unittest.main()
