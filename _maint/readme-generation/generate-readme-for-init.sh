@@ -36,3 +36,4 @@ cmt "If you are satisfied with changes in \`dot-files\` repo. - commit and push"
 cmt "You can also revert \`ff add\` operation by .."
 exe ~/dot-files/ff remove ~/.bashrc
 cmt ".. and again if the change is ok - commit and push"
+cmt "That's all :)"
