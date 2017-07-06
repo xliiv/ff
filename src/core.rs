@@ -51,7 +51,7 @@ pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
         .ok_or_else(|| format!("Can't convert to str: {:?}", &abs_sync_dir))?;
 
     let old_path = config.get("sync-dir")?;
-    config.set("ignore-when-apply", ".git,.hg")?;
+    config.set("ignore-when-apply", ".git/,.hg/")?;
     config.set("sync-dir", abs_sync_dir)?;
     if let Some(p) = old_path {
         if p != abs_sync_dir {
@@ -248,7 +248,7 @@ mod tests {
         let mut f = File::open(config_file).unwrap();
         let mut config_file_src = String::new();
         f.read_to_string(&mut config_file_src).unwrap();
-        assert_eq!(config_file_src.contains("ignore-when-apply=.git,.hg\n"),
+        assert_eq!(config_file_src.contains("ignore-when-apply=.git/,.hg/\n"),
                    true);
         assert_eq!(config_file_src
                        .contains(&format!("sync-dir={}\n", sync_dir.path().to_str().unwrap())),
