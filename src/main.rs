@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 #[macro_use]
 extern crate clap;
+extern crate fui;
 extern crate ini;
 extern crate tempdir;
 extern crate walkdir;
