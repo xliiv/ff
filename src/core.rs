@@ -6,10 +6,9 @@ use std::path::PathBuf;
 use std::os::unix::fs as unix_fs;
 use std::result::Result;
 
-use walkdir::{WalkDir, DirEntry};
+use walkdir::{DirEntry, WalkDir};
 
 use config::*;
-
 
 /// Replaces `old_value` with `new_value` in `text`
 ///
@@ -30,7 +29,6 @@ fn swap_path_bases(text: &str, old_value: &str, new_value: &str) -> String {
     String::from(new)
 }
 
-
 /// Saves defaults (like `sync_dir`, etc.) in config `config` for further use
 pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
     let abs_sync_dir = if std::path::Path::new(&sync_dir).is_absolute() {
@@ -42,9 +40,8 @@ pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
     };
 
     // next two lines can't be merged because of borrow error which i can't resolvec yet
-    let abs_sync_dir =
-        fs::canonicalize(&abs_sync_dir)
-            .map_err(|e| format!("Can't canonicalize: {:?} ({})", &abs_sync_dir, e))?;
+    let abs_sync_dir = fs::canonicalize(&abs_sync_dir)
+        .map_err(|e| format!("Can't canonicalize: {:?} ({})", &abs_sync_dir, e))?;
     let abs_sync_dir = abs_sync_dir
         .as_path()
         .to_str()
@@ -61,7 +58,6 @@ pub fn init(sync_dir: &str, config: &Config) -> Result<(), String> {
     println!("Set sync-dir to: {:?}", abs_sync_dir);
     Ok(())
 }
-
 
 /// Adds `file_path` to `sync-dir`
 ///
@@ -88,13 +84,16 @@ pub fn add(file_path: &str, home_dir: &str, sync_dir: &str) -> Result<(), String
     }
 
     if let Err(e) = unix_fs::symlink(&abs_dst, &file_path) {
-        println!("Can't symlink moved file {} to {} ({})",
-                 abs_dst,
-                 file_path,
-                 e);
+        println!(
+            "Can't symlink moved file {} to {} ({})",
+            abs_dst, file_path, e
+        );
         println!("Trying revert file move..");
         if let Err(e) = std::fs::rename(&abs_dst, &file_path) {
-            return Err(format!("Can't revert file move ({}) - clean it MANUALLY ", e));
+            return Err(format!(
+                "Can't revert file move ({}) - clean it MANUALLY ",
+                e
+            ));
         } else {
             return Err("File move reverted".to_owned());
         }
@@ -115,13 +114,13 @@ pub fn add_files(file_paths: &[&str], home_dir: &str, sync_dir: &str) {
 
 /// Removes `symlink` and replace it with its target
 pub fn remove(symlinked: &str) -> Result<(), String> {
-    let regular_file = fs::read_link(&symlinked)
-        .map_err(|e| format!("Can't read symlink: ({})", e))?;
+    let regular_file =
+        fs::read_link(&symlinked).map_err(|e| format!("Can't read symlink: ({})", e))?;
     if let Err(e) = fs::rename(&regular_file, &symlinked) {
-        return Err(format!("Can't move file {:?} to {:?} ({})",
-                           &regular_file,
-                           &symlinked,
-                           e));
+        return Err(format!(
+            "Can't move file {:?} to {:?} ({})",
+            &regular_file, &symlinked, e
+        ));
     }
     println!("removed: {} (from: {:?})", symlinked, regular_file);
     Ok(())
@@ -138,11 +137,12 @@ pub fn remove_files(file_paths: &[&str]) {
 }
 
 /// Calls `symlink_file` on each files contained in `to_walk`
-pub fn apply(to_walk: &str,
-             sync_dir: &str,
-             home_dir: &str,
-             to_ignore: &[&str])
-             -> Result<(), String> {
+pub fn apply(
+    to_walk: &str,
+    sync_dir: &str,
+    home_dir: &str,
+    to_ignore: &[&str],
+) -> Result<(), String> {
     'dir_item: for item_result in WalkDir::new(Path::new(&to_walk)) {
         let sync_file = match item_result {
             Err(e) => {
@@ -191,9 +191,8 @@ pub fn apply(to_walk: &str,
 /// `/home/joe/sync-dir/.bashrc`
 ///
 pub fn symlink_file(sync_file: &DirEntry, sync_dir: &str, home_dir: &str) -> Result<(), String> {
-    let content_item_data =
-        std::fs::metadata(sync_file.path())
-            .map_err(|e| format!("Can't get file data {:?} ({})", &sync_file, e))?;
+    let content_item_data = std::fs::metadata(sync_file.path())
+        .map_err(|e| format!("Can't get file data {:?} ({})", &sync_file, e))?;
     if !content_item_data.is_file() {
         return Ok(());
     }
@@ -203,11 +202,10 @@ pub fn symlink_file(sync_file: &DirEntry, sync_dir: &str, home_dir: &str) -> Res
         .ok_or_else(|| format!("Can't convert src file: {:?}", &sync_file))?;
     let user_file = swap_path_bases(src_path, sync_dir, home_dir);
     let user_file = Path::new(&user_file);
-    let user_file_dir =
-        user_file
-            .parent()
-            .and_then(|p| p.to_str())
-            .ok_or_else(|| format!("Can't get parent dir for file: {:?}", &user_file))?;
+    let user_file_dir = user_file
+        .parent()
+        .and_then(|p| p.to_str())
+        .ok_or_else(|| format!("Can't get parent dir for file: {:?}", &user_file))?;
     if let Err(e) = fs::create_dir_all(user_file_dir) {
         return Err(format!("Can't create dir: {} ({})", user_file_dir, e));
     }
@@ -217,12 +215,14 @@ pub fn symlink_file(sync_file: &DirEntry, sync_dir: &str, home_dir: &str) -> Res
         }
     }
     if let Err(e) = unix_fs::symlink(&sync_file.path(), &user_file) {
-        return Err(format!("Can't symlink {:?} to {:?} ({})", sync_file, user_file, e));
+        return Err(format!(
+            "Can't symlink {:?} to {:?} ({})",
+            sync_file, user_file, e
+        ));
     }
     println!("symlinked: {:?} -> {:?}", user_file, sync_file.path());
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -248,11 +248,14 @@ mod tests {
         let mut f = File::open(config_file).unwrap();
         let mut config_file_src = String::new();
         f.read_to_string(&mut config_file_src).unwrap();
-        assert_eq!(config_file_src.contains("ignore-when-apply=.git/,.hg/\n"),
-                   true);
-        assert_eq!(config_file_src
-                       .contains(&format!("sync-dir={}\n", sync_dir.path().to_str().unwrap())),
-                   true);
+        assert_eq!(
+            config_file_src.contains("ignore-when-apply=.git/,.hg/\n"),
+            true
+        );
+        assert_eq!(
+            config_file_src.contains(&format!("sync-dir={}\n", sync_dir.path().to_str().unwrap())),
+            true
+        );
     }
 
     #[test]
@@ -264,17 +267,20 @@ mod tests {
         let synced_file = sync_dir.path().join(".vimrc");
         assert_eq!(synced_file.exists(), false);
 
-        add(file_to_sync.to_str().unwrap(),
+        add(
+            file_to_sync.to_str().unwrap(),
             &homedir.path().to_str().unwrap(),
-            &sync_dir.path().to_str().unwrap())
-                .unwrap();
+            &sync_dir.path().to_str().unwrap(),
+        ).unwrap();
 
         assert_eq!(synced_file.exists(), true);
-        assert_eq!(fs::symlink_metadata(file_to_sync.to_str().unwrap())
-                       .unwrap()
-                       .file_type()
-                       .is_symlink(),
-                   true);
+        assert_eq!(
+            fs::symlink_metadata(file_to_sync.to_str().unwrap())
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            true
+        );
     }
 
     #[test]
@@ -294,21 +300,25 @@ mod tests {
             assert_eq!(file.exists(), false);
         }
 
-        add_files(&files_to_sync
-                       .iter()
-                       .map(|f| f.to_str().unwrap())
-                       .collect::<Vec<_>>(),
-                  homedir.path().to_str().unwrap(),
-                  sync_dir.path().to_str().unwrap());
+        add_files(
+            &files_to_sync
+                .iter()
+                .map(|f| f.to_str().unwrap())
+                .collect::<Vec<_>>(),
+            homedir.path().to_str().unwrap(),
+            sync_dir.path().to_str().unwrap(),
+        );
 
         // checks file are synced
         for (idx, path) in synced_files.iter().enumerate() {
             assert_eq!(path.exists(), true);
-            assert_eq!(fs::symlink_metadata(files_to_sync[idx].to_str().unwrap())
-                           .unwrap()
-                           .file_type()
-                           .is_symlink(),
-                       true);
+            assert_eq!(
+                fs::symlink_metadata(files_to_sync[idx].to_str().unwrap())
+                    .unwrap()
+                    .file_type()
+                    .is_symlink(),
+                true
+            );
         }
     }
 
@@ -320,20 +330,24 @@ mod tests {
         File::create(&sync_file).unwrap();
         let home_file = homedir.path().join(".vimrc");
         unix_fs::symlink(&sync_file, &home_file).unwrap();
-        assert_eq!(fs::symlink_metadata(&home_file)
-                       .unwrap()
-                       .file_type()
-                       .is_symlink(),
-                   true);
+        assert_eq!(
+            fs::symlink_metadata(&home_file)
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            true
+        );
 
         let result = remove(&home_file.to_str().unwrap()).unwrap();
 
         assert_eq!(result, ());
-        assert_eq!(fs::symlink_metadata(&home_file)
-                       .unwrap()
-                       .file_type()
-                       .is_file(),
-                   true);
+        assert_eq!(
+            fs::symlink_metadata(&home_file)
+                .unwrap()
+                .file_type()
+                .is_file(),
+            true
+        );
         assert_eq!(Path::new(&sync_file).exists(), false);
     }
 
@@ -348,33 +362,37 @@ mod tests {
             let file_to_restore = homedir.path().join(&filename);
 
             File::create(&synced_file).unwrap();
-            unix_fs::symlink(&synced_file.to_str().unwrap(),
-                             &file_to_restore.to_str().unwrap())
-                    .unwrap();
+            unix_fs::symlink(
+                &synced_file.to_str().unwrap(),
+                &file_to_restore.to_str().unwrap(),
+            ).unwrap();
 
             synced_files.push(synced_file);
             files_to_restore.push(file_to_restore);
         }
         for file in &files_to_restore {
             // checks that files are symlinks
-            assert_eq!(fs::symlink_metadata(&file)
-                           .unwrap()
-                           .file_type()
-                           .is_symlink(),
-                       true);
+            assert_eq!(
+                fs::symlink_metadata(&file)
+                    .unwrap()
+                    .file_type()
+                    .is_symlink(),
+                true
+            );
         }
 
         remove_files(&files_to_restore
-                          .iter()
-                          .map(|f| f.to_str().unwrap())
-                          .collect::<Vec<_>>());
+            .iter()
+            .map(|f| f.to_str().unwrap())
+            .collect::<Vec<_>>());
 
         for file in files_to_restore {
             // checks that files are regular files
-            assert_eq!(fs::symlink_metadata(&file).unwrap().file_type().is_file(),
-                       true);
+            assert_eq!(
+                fs::symlink_metadata(&file).unwrap().file_type().is_file(),
+                true
+            );
         }
-
     }
 
     #[test]
@@ -386,18 +404,21 @@ mod tests {
         let user_file = homedir.path().join(".vimrc");
         assert_eq!(user_file.exists(), false);
 
-        let result = apply(&sync_dir.path().to_str().unwrap(),
-                           &sync_dir.path().to_str().unwrap(),
-                           &homedir.path().to_str().unwrap(),
-                           &vec![])
-                .unwrap();
+        let result = apply(
+            &sync_dir.path().to_str().unwrap(),
+            &sync_dir.path().to_str().unwrap(),
+            &homedir.path().to_str().unwrap(),
+            &vec![],
+        ).unwrap();
 
         assert_eq!(result, ());
-        assert_eq!(fs::symlink_metadata(&user_file)
-                       .unwrap()
-                       .file_type()
-                       .is_symlink(),
-                   true);
+        assert_eq!(
+            fs::symlink_metadata(&user_file)
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            true
+        );
     }
 
     #[test]
@@ -408,20 +429,25 @@ mod tests {
         File::create(&synced_file).unwrap();
         let user_file = homedir.path().join(".vimrc");
         File::create(&user_file).unwrap();
-        assert_eq!(fs::metadata(&user_file).unwrap().file_type().is_file(),
-                   true);
+        assert_eq!(
+            fs::metadata(&user_file).unwrap().file_type().is_file(),
+            true
+        );
 
-        let result = apply(&sync_dir.path().to_str().unwrap(),
-                           &sync_dir.path().to_str().unwrap(),
-                           &homedir.path().to_str().unwrap(),
-                           &vec![])
-                .unwrap();
+        let result = apply(
+            &sync_dir.path().to_str().unwrap(),
+            &sync_dir.path().to_str().unwrap(),
+            &homedir.path().to_str().unwrap(),
+            &vec![],
+        ).unwrap();
 
         assert_eq!(result, ());
-        assert_eq!(fs::symlink_metadata(&user_file)
-                       .unwrap()
-                       .file_type()
-                       .is_symlink(),
-                   true);
+        assert_eq!(
+            fs::symlink_metadata(&user_file)
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            true
+        );
     }
 }
