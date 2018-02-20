@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std;
 
-use clap::{SubCommand, Arg};
+use clap::{Arg, SubCommand};
 use fui::Fui;
 use fui::feeders::DirItems;
 use fui::fields::{Autocomplete, Multiselect};
@@ -23,59 +23,77 @@ fn get_fui(config: Config) -> Fui {
     Fui::new()
         .action(
             "INIT: select dir where dot-files will be stored",
-            FormView::new()
-                .field(
-                    Autocomplete::new("dir-path", DirItems::dirs())
-                        .help("Path to dir where dot-files will be stored")
-                        .initial(cwd())
-                        .validator(validators::Required)
-                ),
+            FormView::new().field(
+                Autocomplete::new("dir-path", DirItems::dirs())
+                    .help("Path to dir where dot-files will be stored")
+                    .initial(cwd())
+                    .validator(validators::Required),
+            ),
             move |v| {
-                action_init(v["dir-path"].as_str().expect("can't get dir-path"), &config_init);
+                action_init(
+                    v["dir-path"].as_str().expect("can't get dir-path"),
+                    &config_init,
+                );
             },
-        ).action(
+        )
+        .action(
             "ADD: adds home-dir files to sync-dir",
             FormView::new()
                 .field(
                     Multiselect::new("file-path", DirItems::new())
                         .help("Path to file which should be tracked")
                         .validator(validators::Required)
-                        .validator(validators::FileExists)
-                ).field(
+                        .validator(validators::FileExists),
+                )
+                .field(
                     Autocomplete::new("sync-subdir", DirItems::dirs())
                         .help("Path to dir where tracked file are stored")
                         .initial("homedir")
-                        .validator(validators::Required)
+                        .validator(validators::Required),
                 ),
             move |v| {
-                let file_paths = v.get("file-path").unwrap().as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect::<Vec<&str>>();
-                if let Err(e) = action_add(&file_paths, v["sync-subdir"].as_str().unwrap(), &config_add) {
+                let file_paths = v.get("file-path")
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x.as_str().unwrap())
+                    .collect::<Vec<&str>>();
+                if let Err(e) =
+                    action_add(&file_paths, v["sync-subdir"].as_str().unwrap(), &config_add)
+                {
                     println!("{}", e);
                 }
             },
-        ).action(
+        )
+        .action(
             "REMOVE: removes home-dir files from sync-dir",
-            FormView::new()
-                .field(
-                    Multiselect::new("file-path", DirItems::new())
-                        .help("Path to home-dir file which should be removed from sync-dir")
-                        .validator(validators::Required)
-                        .validator(validators::FileExists)
-                ),
+            FormView::new().field(
+                Multiselect::new("file-path", DirItems::new())
+                    .help("Path to home-dir file which should be removed from sync-dir")
+                    .validator(validators::Required)
+                    .validator(validators::FileExists),
+            ),
             move |v| {
-                let file_paths = v.get("file-path").unwrap().as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect::<Vec<&str>>();
+                let file_paths = v.get("file-path")
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x.as_str().unwrap())
+                    .collect::<Vec<&str>>();
                 action_remove(&file_paths)
             },
-        ).action(
+        )
+        .action(
             "APPLY: replaces home-dir's files with aliases from sync-dir",
-            FormView::new()
-                .field(
-                    Autocomplete::new("sync-subdir", DirItems::dirs())
-                        .help("Path to sync-subdir where tracked files are stored")
-                        .initial("homedir")
-                        .validator(validators::Required)
-                        .validator(validators::DirExists)
-                ),
+            FormView::new().field(
+                Autocomplete::new("sync-subdir", DirItems::dirs())
+                    .help("Path to sync-subdir where tracked files are stored")
+                    .initial("homedir")
+                    .validator(validators::Required)
+                    .validator(validators::DirExists),
+            ),
             move |v| {
                 let space_dir = v["sync-subdir"].as_str().unwrap();
                 if let Err(e) = action_apply(space_dir, &config_apply) {
@@ -100,15 +118,13 @@ fn home_dir_contained<T: AsRef<Path>>(dir: T) -> Result<bool, String> {
 
 fn action_init(sync_dir: &str, config: &Config) {
     let _sync_dir = match sync_dir.len() {
-        0 => {
-            match std::env::current_dir() {
-                Err(e) => {
-                    println!("Can't get home dir ({})", e);
-                    return;
-                }
-                Ok(v) => v,
+        0 => match std::env::current_dir() {
+            Err(e) => {
+                println!("Can't get home dir ({})", e);
+                return;
             }
-        }
+            Ok(v) => v,
+        },
         _ => Path::new(sync_dir).to_path_buf(),
     };
     let _sync_dir = match std::fs::canonicalize(&_sync_dir) {
@@ -120,9 +136,10 @@ fn action_init(sync_dir: &str, config: &Config) {
     };
     let is_home_dir = match home_dir_contained(&_sync_dir) {
         Err(e) => {
-            println!("Can't validate if {:?} is descendat of home dir ({})",
-                     &_sync_dir,
-                     e);
+            println!(
+                "Can't validate if {:?} is descendat of home dir ({})",
+                &_sync_dir, e
+            );
             return;
         }
         Ok(v) => v,
@@ -159,10 +176,12 @@ fn with_space_dir(space_dir: &str, config: &Config) -> Result<PathBuf, String> {
         .get("sync-dir")
         .map_err(|e| format!("Can't read sync-dir from {} ({})", config.get_path(), e))?
         .ok_or_else(|| {
-                        format!("Can't find 'sync-dir' value in config file: {}\n\
-                    Did you run: 'ff init' on your sync-dir?",
-                                config.get_path())
-                    })?;
+            format!(
+                "Can't find 'sync-dir' value in config file: {}\n\
+                 Did you run: 'ff init' on your sync-dir?",
+                config.get_path()
+            )
+        })?;
     let mut sync_dir = PathBuf::from(sync_dir);
     if space_dir != "" {
         sync_dir = sync_dir.join(space_dir);
@@ -183,13 +202,13 @@ fn action_apply(space_dir: &str, config: &Config) -> Result<(), String> {
     let home_dir = home_dir
         .to_str()
         .ok_or_else(|| "Can't convert home dir to str".to_owned())?;
-    let to_ignore = config
-        .get("ignore-when-apply")
-        .map_err(|e| {
-                     format!("Can't get ignore-when-apply from {} ({})",
-                             config.get_path(),
-                             e)
-                 })?;
+    let to_ignore = config.get("ignore-when-apply").map_err(|e| {
+        format!(
+            "Can't get ignore-when-apply from {} ({})",
+            config.get_path(),
+            e
+        )
+    })?;
     let to_ignore = match to_ignore.as_ref() {
         None => vec![],
         Some(v) => v.split(',').collect(),
@@ -217,46 +236,42 @@ pub fn run_cli() {
 
     let app = app_from_crate!()
         .version(crate_version!())
-        .about("\n\
-            `ff` helps you manage dot files by:\n\n\
-            - symlinking files from your homedir to synchronized dir\n\
-            - symlinking files from synchronized dir to homedir\n\
-        ")
+        .about(
+            "\n\
+             `ff` helps you manage dot files by:\n\n\
+             - symlinking files from your homedir to synchronized dir\n\
+             - symlinking files from synchronized dir to homedir\n\
+             ",
+        )
         .subcommand(
             SubCommand::with_name("init")
                 .about("Sets dir as sync-dir")
-                .arg(Arg::with_name("dir-path")
-                        .required(false)
-                        .help("Sets dir as sync-dir \
-                        (which means dot-files will be stored there and you sync that dir)")
-                ),
+                .arg(Arg::with_name("dir-path").required(false).help(
+                    "Sets dir as sync-dir \
+                     (which means dot-files will be stored there and you sync that dir)",
+                )),
         )
         .subcommand(
             SubCommand::with_name("add")
                 .about("Adds files to synchronized dir")
                 .args(&[
-                      Arg::with_name("file-path")
-                          .multiple(true).required(true),
-                      Arg::with_name("space-dir")
-                          .short("d")
-                          .takes_value(true)
-                          .help("Specifies dir in which file is added (default: 'homedir')")
-                          .required(false),
-                ])
+                    Arg::with_name("file-path").multiple(true).required(true),
+                    Arg::with_name("space-dir")
+                        .short("d")
+                        .takes_value(true)
+                        .help("Specifies dir in which file is added (default: 'homedir')")
+                        .required(false),
+                ]),
         )
         .subcommand(
             SubCommand::with_name("remove")
                 .about("Removes files from synchronized dir")
-                .arg(Arg::with_name("file-path")
-                        .multiple(true).required(true)
-                )
+                .arg(Arg::with_name("file-path").multiple(true).required(true)),
         )
         .subcommand(
             SubCommand::with_name("apply")
                 .about("Replaces home dir's files with aliases from synchronized dir")
-                .arg(
-                    Arg::with_name("space-dir")
-                )
+                .arg(Arg::with_name("space-dir")),
         );
 
     let matches = app.clone().get_matches();

@@ -3,7 +3,6 @@ use std;
 use std::path::Path;
 use ini::Ini;
 
-
 /// Config manager storing data in files
 #[derive(Debug)]
 pub struct Config {
@@ -16,9 +15,12 @@ impl Config {
     ///
     /// Config file is created (including necessery dirs.) if not exists
     pub fn new<T>(path: T) -> Result<Config, String>
-        where T: AsRef<str>
+    where
+        T: AsRef<str>,
     {
-        let config = Config { path: path.as_ref().to_owned() };
+        let config = Config {
+            path: path.as_ref().to_owned(),
+        };
         config.create_config_dir()?;
         Ok(config)
     }
@@ -61,7 +63,10 @@ impl Config {
             .map_err(|e| format!("Can't load config: {} ({})", &self.path, e))?;
         conf.with_section(None::<String>).set(key, value);
         if let Err(e) = conf.write_to_file(self.path.as_str()) {
-            return Err(format!("Can't save {}={} to {} ({})", &key, &value, self.path, e));
+            return Err(format!(
+                "Can't save {}={} to {} ({})",
+                &key, &value, self.path, e
+            ));
         }
         Ok(())
     }
