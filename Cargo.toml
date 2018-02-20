@@ -8,3 +8,10 @@ clap = "2.24"
 tempdir = "0.3.4"
 rust-ini = "0.9.*"
 walkdir = "0.1"
+
+[dependencies.fui]
+# TODO::: use fixed version
+#version = "0.8"
+git = "https://github.com/xliiv/fui"
+default-features = false
+features = ["termion-backend"]
