@@ -1,6 +1,6 @@
 [package]
 name = "ff"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["xliiv <tymoteusz.jankowski@gmail.com>"]
 
 [dependencies]
@@ -10,8 +10,6 @@ rust-ini = "0.9.*"
 walkdir = "0.1"
 
 [dependencies.fui]
-# TODO::: use fixed version
-#version = "0.8"
-git = "https://github.com/xliiv/fui"
+version = "0.7"
 default-features = false
 features = ["termion-backend"]
