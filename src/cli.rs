@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std;
 
-use clap::{Arg, SubCommand};
 use fui::Fui;
 use fui::feeders::DirItems;
 use fui::fields::{Autocomplete, Multiselect};
@@ -15,14 +14,15 @@ use fui::validators;
 use config::*;
 use core::*;
 
-fn get_fui(config: Config) -> Fui {
+fn get_fui(config: Config) -> Fui<'static, 'static> {
     let config = Rc::new(config);
     let config_init = Rc::clone(&config);
     let config_add = Rc::clone(&config);
     let config_apply = Rc::clone(&config);
     Fui::new()
         .action(
-            "INIT: select dir where dot-files will be stored",
+            "init",
+            "select dir where dot-files will be stored",
             FormView::new().field(
                 Autocomplete::new("dir-path", DirItems::dirs())
                     .help("Path to dir where dot-files will be stored")
@@ -37,7 +37,8 @@ fn get_fui(config: Config) -> Fui {
             },
         )
         .action(
-            "ADD: adds home-dir files to sync-dir",
+            "add",
+            "adds home-dir files to sync-dir",
             FormView::new()
                 .field(
                     Multiselect::new("file-path", DirItems::new())
@@ -67,7 +68,8 @@ fn get_fui(config: Config) -> Fui {
             },
         )
         .action(
-            "REMOVE: removes home-dir files from sync-dir",
+            "remove",
+            "removes home-dir files from sync-dir",
             FormView::new().field(
                 Multiselect::new("file-path", DirItems::new())
                     .help("Path to home-dir file which should be removed from sync-dir")
@@ -86,7 +88,8 @@ fn get_fui(config: Config) -> Fui {
             },
         )
         .action(
-            "APPLY: replaces home-dir's files with aliases from sync-dir",
+            "apply",
+            "replaces home-dir's files with aliases from sync-dir",
             FormView::new().field(
                 Autocomplete::new("sync-subdir", DirItems::dirs())
                     .help("Path to sync-subdir where tracked files are stored")
@@ -101,6 +104,10 @@ fn get_fui(config: Config) -> Fui {
                 }
             },
         )
+        .name(crate_name!())
+        .version(crate_version!())
+        .about(crate_description!())
+        .author(crate_authors!())
 }
 
 /// Returns path to config file
@@ -234,87 +241,5 @@ pub fn run_cli() {
         Ok(v) => v,
     };
 
-    let app = app_from_crate!()
-        .version(crate_version!())
-        .about(
-            "\n\
-             `ff` helps you manage dot files by:\n\n\
-             - symlinking files from your homedir to synchronized dir\n\
-             - symlinking files from synchronized dir to homedir\n\
-             ",
-        )
-        .subcommand(
-            SubCommand::with_name("init")
-                .about("Sets dir as sync-dir")
-                .arg(Arg::with_name("dir-path").required(false).help(
-                    "Sets dir as sync-dir \
-                     (which means dot-files will be stored there and you sync that dir)",
-                )),
-        )
-        .subcommand(
-            SubCommand::with_name("add")
-                .about("Adds files to synchronized dir")
-                .args(&[
-                    Arg::with_name("file-path").multiple(true).required(true),
-                    Arg::with_name("space-dir")
-                        .short("d")
-                        .takes_value(true)
-                        .help("Specifies dir in which file is added (default: 'homedir')")
-                        .required(false),
-                ]),
-        )
-        .subcommand(
-            SubCommand::with_name("remove")
-                .about("Removes files from synchronized dir")
-                .arg(Arg::with_name("file-path").multiple(true).required(true)),
-        )
-        .subcommand(
-            SubCommand::with_name("apply")
-                .about("Replaces home dir's files with aliases from synchronized dir")
-                .arg(Arg::with_name("space-dir")),
-        );
-
-    let matches = app.clone().get_matches();
-
-    // apply matching
-    match matches.subcommand_name() {
-        Some("init") => {
-            if let Some(matches) = matches.subcommand_matches("init") {
-                action_init(matches.value_of("dir-path").unwrap_or(""), &config);
-            }
-        }
-        Some("add") => {
-            if let Some(matches) = matches.subcommand_matches("add") {
-                let file_paths: Vec<_> = matches
-                    .values_of("file-path")
-                    .expect("Can't get file paths")
-                    .collect();
-                let space_dir = matches.value_of("space-dir").unwrap_or("");
-                if let Err(e) = action_add(&file_paths, space_dir, &config) {
-                    println!("{}", e);
-                }
-            }
-        }
-        Some("remove") => {
-            if let Some(matches) = matches.subcommand_matches("remove") {
-                let file_paths: Vec<_> = matches
-                    .values_of("file-path")
-                    .expect("Can't read file paths to remove")
-                    .collect();
-                action_remove(&file_paths);
-            }
-        }
-        Some("apply") => {
-            if let Some(matches) = matches.subcommand_matches("apply") {
-                let space_dir = matches.value_of("space-dir").unwrap_or("");
-                if let Err(e) = action_apply(space_dir, &config) {
-                    println!("{}", e);
-                }
-            }
-        }
-        _ => {
-            get_fui(config).run();
-            ()
-        }
-    }
+    get_fui(config).run();
 }
