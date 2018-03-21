@@ -25,15 +25,15 @@ exe tar -xvzf $FF_GZIP_FILENAME
 exe chmod +x ff
 cmt "Now we want to add \`.bashrc\` to \`dot-files\`"
 exe cd
-exe ~/dot-files/ff add .bashrc
+exe ~/dot-files/ff add --file-path .bashrc --sync-subdir .
 cmt "Oops, we haven't told \`ff\` yet where is the \`dot-files\` dir"
-exe ~/dot-files/ff init dot-files
+exe ~/dot-files/ff init --dir-path dot-files
 cmt "Ok, now it should work.."
-exe ~/dot-files/ff add .bashrc
+exe ~/dot-files/ff add --file-path .bashrc --sync-subdir .
 cmt "Let's take a look at our home dir, \`.bashrc\` should be symlinked"
 exe ls -la
 cmt "If you are satisfied with changes in \`dot-files\` repo. - commit and push"
 cmt "You can also revert \`ff add\` operation by .."
-exe ~/dot-files/ff remove ~/.bashrc
+exe ~/dot-files/ff remove --file-path ~/.bashrc
 cmt ".. and again if the change is ok - commit and push"
 cmt "That's all :)"
