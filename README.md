@@ -1,11 +1,3 @@
-# Commands:
-
-- ff init &lt;path-to-dir&gt;
-- ff add &lt;file-path&gt; [&lt;file-path&gt;]
-- ff rm &lt;file-path&gt; [&lt;file-path&gt;]
-- ff apply
-
-
 # Description:
 
 `ff` helps you manage dot files by:
@@ -14,9 +6,25 @@
 - linking files from sync dir to homedir
 
 
+# Usage
+
+## CLI:
+
+    ```bash
+    $ ff add --file-path <file-path>... --sync-subdir <sync-subdir>
+    $ ff init --dir-path <dir-path>
+    $ ff remove --file-path <file-path>...
+    $ ff apply --sync-subdir <sync-subdir>
+    ```
+
+## TUI:
+
+![ff demo](./demo.png)
+
+
 ## 1. Creating dot-files dir:
 
-```
+```bash
 $ # Let's say you want to have `dot-files` dir as a git repo.
 $ cd /home/ff-demo
 $ mkdir dot-files
@@ -61,7 +69,7 @@ $ # That's all :)
 
 ## 2. Using dot-files dir:
 
-```
+```bash
 $ # Let's say you already have dot-files repo. on github..
 $ # .. and you want to use in ..
 $ git clone https://github.com/xliiv/dot-files
