@@ -1,15 +1,19 @@
 [package]
 name = "ff"
-version = "1.1.0"
+version = "2.0.0"
+description = """\n\
+ff helps you manage dot files by:
+ - symlinking files from your homedir to synchronized dir
+ - symlinking files from synchronized dir to homedir"""
 authors = ["xliiv <tymoteusz.jankowski@gmail.com>"]
 
 [dependencies]
-clap = "2.24"
+clap = "2"
 tempdir = "0.3.4"
 rust-ini = "0.9.*"
 walkdir = "0.1"
 
 [dependencies.fui]
-version = "0.7"
+version = "0.8"
 default-features = false
 features = ["termion-backend"]

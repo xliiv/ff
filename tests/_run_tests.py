@@ -46,7 +46,7 @@ class Setup:
         _setup_test()
         shutil.copyfile("/tests/ff", os.path.join(DOT_FILES_DIR, FF))
         os.chdir(DOT_FILES_DIR)
-        subp.run([FF_PATH, 'init', '.'], stdout=STDOUT)
+        subp.run([FF_PATH, 'init', '--dir-path', '.'], stdout=STDOUT)
 
     def tearDown(self):
         _teardown_test()
@@ -59,12 +59,12 @@ class TestAll(Setup, unittest.TestCase):
     def test_add_works(self):
         os.chdir(HOME_DIR)
 
-        subp.run([FF_PATH, 'add', '.bashrc'], stdout=STDOUT)
+        subp.run([FF_PATH, 'add', '--file-path', '.bashrc', '--sync-subdir', '.'], stdout=STDOUT)
 
         self.assertTrue(
             os.path.exists(
                 os.path.join(DOT_FILES_DIR, '.bashrc')
-            )   
+            )
         )
         symlinked = os.path.join(HOME_DIR, '.bashrc')
         self.assertTrue(os.path.exists(symlinked))
@@ -73,12 +73,12 @@ class TestAll(Setup, unittest.TestCase):
     def test_add_works_when_space_passed(self):
         os.chdir(HOME_DIR)
 
-        subp.run([FF_PATH, 'add', '.bashrc', '-d', DOT_FILES_SPACE], stdout=STDOUT)
+        subp.run([FF_PATH, 'add', '--file-path', '.bashrc', '--sync-subdir', DOT_FILES_SPACE], stdout=STDOUT)
 
         self.assertTrue(
             os.path.exists(
                 os.path.join(DOT_FILES_WITH_SPACE, '.bashrc')
-            )   
+            )
         )
         symlinked = os.path.join(HOME_DIR, '.bashrc')
         self.assertTrue(os.path.exists(symlinked))
@@ -108,19 +108,19 @@ class TestApply(Setup, unittest.TestCase):
         self.file_symlinked = os.path.join(HOME_DIR, self.file_name)
         Path(self.file_to_symlink).touch()
 
-    def test_apply_works_When_homedir_file_missing(self):
+    def test_apply_works_when_homedir_file_missing(self):
         os.remove(self.file_symlinked)
         self.assertFalse(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply'], stdout=STDOUT)
+        subp.run([FF_PATH, 'apply', '--sync-subdir', '.'], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(os.path.islink(self.file_symlinked))
 
-    def test_apply_works_When_homedir_file_exists(self):
+    def test_apply_works_when_homedir_file_exists(self):
         self.assertTrue(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply'], stdout=STDOUT)
+        subp.run([FF_PATH, 'apply', '--sync-subdir', '.'], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(
@@ -139,19 +139,19 @@ class TestApplyWithSpace(Setup, unittest.TestCase):
         self.file_symlinked = os.path.join(HOME_DIR, self.file_name)
         Path(self.file_to_symlink).touch()
 
-    def test_apply_works_When_homedir_file_missing(self):
+    def test_apply_works_when_homedir_file_missing(self):
         os.remove(self.file_symlinked)
         self.assertFalse(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply', DOT_FILES_SPACE], stdout=STDOUT)
+        subp.run([FF_PATH, 'apply', '--sync-subdir', DOT_FILES_SPACE], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(os.path.islink(self.file_symlinked))
 
-    def test_apply_works_When_homedir_file_exists(self):
+    def test_apply_works_when_homedir_file_exists(self):
         self.assertTrue(os.path.exists(self.file_symlinked))
 
-        subp.run([FF_PATH, 'apply', DOT_FILES_SPACE], stdout=STDOUT)
+        subp.run([FF_PATH, 'apply', '--sync-subdir', DOT_FILES_SPACE], stdout=STDOUT)
 
         self.assertFalse(os.path.islink(self.file_to_symlink))
         self.assertTrue(
