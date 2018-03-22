@@ -10,12 +10,12 @@
 
 ## CLI:
 
-    ```bash
-    $ ff add --file-path <file-path>... --sync-subdir <sync-subdir>
-    $ ff init --dir-path <dir-path>
-    $ ff remove --file-path <file-path>...
-    $ ff apply --sync-subdir <sync-subdir>
-    ```
+```bash
+$ ff add --file-path <file-path>... --sync-subdir <sync-subdir>
+$ ff init --dir-path <dir-path>
+$ ff remove --file-path <file-path>...
+$ ff apply --sync-subdir <sync-subdir>
+```
 
 ## TUI:
 
